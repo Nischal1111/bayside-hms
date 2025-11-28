@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { DashboardLayout } from "@/components/dashboard-layout";
+import { SidebarLayout } from "@/components/sidebar-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ export default function DoctorDashboard() {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
   const [feedback, setFeedback] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState("dashboard");
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   const [recordForm, setRecordForm] = useState({
     diagnosis: "",
@@ -151,28 +152,76 @@ export default function DoctorDashboard() {
   const userName = user?.profile ? `Dr. ${user.profile.first_name} ${user.profile.last_name}` : "Doctor";
 
   return (
-    <DashboardLayout userRole="doctor" userName={userName}>
+    <SidebarLayout userRole="doctor" userName={userName} activeTab={activeTab} onTabChange={setActiveTab}>
       <div className="space-y-6">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Welcome, Dr. {user?.profile?.first_name}!</h2>
           <p className="text-muted-foreground">Manage your patients and appointments</p>
         </div>
 
-        <Tabs defaultValue="appointments" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="appointments">
-              <Calendar className="mr-2 h-4 w-4" />
-              Appointments
-            </TabsTrigger>
-            <TabsTrigger value="records">
-              <FileText className="mr-2 h-4 w-4" />
-              Medical Records
-            </TabsTrigger>
-            <TabsTrigger value="feedback">
-              <MessageSquare className="mr-2 h-4 w-4" />
-              Feedback
-            </TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="hidden">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="appointments">Appointments</TabsTrigger>
+            <TabsTrigger value="records">Medical Records</TabsTrigger>
+            <TabsTrigger value="feedback">Feedback</TabsTrigger>
           </TabsList>
+
+          {/* Dashboard Tab */}
+          <TabsContent value="dashboard" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Appointments</CardTitle>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{appointments.length}</div>
+                  <p className="text-xs text-muted-foreground">Patient appointments</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Medical Records</CardTitle>
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{medicalRecords.length}</div>
+                  <p className="text-xs text-muted-foreground">Records created</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Patient Feedback</CardTitle>
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{feedback.length}</div>
+                  <p className="text-xs text-muted-foreground">Feedback received</p>
+                </CardContent>
+              </Card>
+            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Quick Actions</CardTitle>
+                <CardDescription>Manage your patients and records</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4 md:grid-cols-3">
+                <Button onClick={() => setActiveTab("appointments")} className="h-20">
+                  <Calendar className="mr-2 h-5 w-5" />
+                  View Appointments
+                </Button>
+                <Button onClick={() => setActiveTab("records")} variant="outline" className="h-20">
+                  <FileText className="mr-2 h-5 w-5" />
+                  Medical Records
+                </Button>
+                <Button onClick={() => setActiveTab("feedback")} variant="outline" className="h-20">
+                  <MessageSquare className="mr-2 h-5 w-5" />
+                  View Feedback
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="appointments" className="space-y-4">
             <Card>
@@ -347,6 +396,6 @@ export default function DoctorDashboard() {
           </TabsContent>
         </Tabs>
       </div>
-    </DashboardLayout>
+    </SidebarLayout>
   );
 }

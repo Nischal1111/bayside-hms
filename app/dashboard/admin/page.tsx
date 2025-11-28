@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { DashboardLayout } from "@/components/dashboard-layout";
+import { SidebarLayout } from "@/components/sidebar-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ export default function AdminDashboard() {
   const [patients, setPatients] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
   const [pendingDoctors, setPendingDoctors] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState("dashboard");
 
   useEffect(() => {
     fetchUser();
@@ -123,15 +124,25 @@ export default function AdminDashboard() {
   const userName = user?.profile ? `${user.profile.first_name} ${user.profile.last_name}` : "Admin";
 
   return (
-    <DashboardLayout userRole="admin" userName={userName}>
+    <SidebarLayout userRole="admin" userName={userName} activeTab={activeTab} onTabChange={setActiveTab}>
       <div className="space-y-6">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Admin Dashboard</h2>
           <p className="text-muted-foreground">Manage hospital operations and staff</p>
         </div>
 
-        {/* Stats */}
-        <div className="grid gap-4 md:grid-cols-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="hidden">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="approvals">Pending Approvals</TabsTrigger>
+            <TabsTrigger value="doctors">Manage Doctors</TabsTrigger>
+            <TabsTrigger value="patients">Manage Patients</TabsTrigger>
+          </TabsList>
+
+          {/* Dashboard Tab */}
+          <TabsContent value="dashboard" className="space-y-4">
+            {/* Stats */}
+            <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Patients</CardTitle>
@@ -170,12 +181,27 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        <Tabs defaultValue="approvals" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="approvals">Pending Approvals</TabsTrigger>
-            <TabsTrigger value="doctors">Doctors</TabsTrigger>
-            <TabsTrigger value="patients">Patients</TabsTrigger>
-          </TabsList>
+            <Card>
+              <CardHeader>
+                <CardTitle>Quick Actions</CardTitle>
+                <CardDescription>Manage hospital operations</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4 md:grid-cols-3">
+                <Button onClick={() => setActiveTab("approvals")} className="h-20" disabled={stats.pendingApprovals === 0}>
+                  <UserPlus className="mr-2 h-5 w-5" />
+                  Pending Approvals ({stats.pendingApprovals})
+                </Button>
+                <Button onClick={() => setActiveTab("doctors")} variant="outline" className="h-20">
+                  <Users className="mr-2 h-5 w-5" />
+                  Manage Doctors
+                </Button>
+                <Button onClick={() => setActiveTab("patients")} variant="outline" className="h-20">
+                  <Users className="mr-2 h-5 w-5" />
+                  Manage Patients
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="approvals" className="space-y-4">
             <Card>
@@ -260,6 +286,6 @@ export default function AdminDashboard() {
           </TabsContent>
         </Tabs>
       </div>
-    </DashboardLayout>
+    </SidebarLayout>
   );
 }
