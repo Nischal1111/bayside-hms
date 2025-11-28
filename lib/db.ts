@@ -1,20 +1,24 @@
-import { Pool } from 'pg';
+import mysql from 'mysql2/promise';
 
 // Create a connection pool
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+const pool = mysql.createPool({
+  uri: process.env.DATABASE_URL,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
 });
 
 // Test the connection
-pool.on('connect', () => {
-  console.log('Database connected successfully');
-});
-
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
-  process.exit(-1);
-});
+pool.getConnection()
+  .then(connection => {
+    console.log('Database connected successfully');
+    connection.release();
+  })
+  .catch(err => {
+    console.error('Database connection failed:', err);
+  });
 
 export default pool;
 
@@ -22,10 +26,24 @@ export default pool;
 export async function query(text: string, params?: any[]) {
   const start = Date.now();
   try {
-    const res = await pool.query(text, params);
+    // Convert PostgreSQL-style placeholders ($1, $2) to MySQL-style (?)
+    let mysqlQuery = text;
+    if (params && params.length > 0) {
+      let paramIndex = 1;
+      mysqlQuery = text.replace(/\$\d+/g, () => {
+        return '?';
+      });
+    }
+
+    const [rows] = await pool.execute(mysqlQuery, params || []);
     const duration = Date.now() - start;
-    console.log('Executed query', { text, duration, rows: res.rowCount });
-    return res;
+    console.log('Executed query', { text: mysqlQuery, duration, rows: Array.isArray(rows) ? rows.length : 0 });
+
+    // Return in PostgreSQL-compatible format
+    return {
+      rows: Array.isArray(rows) ? rows : [rows],
+      rowCount: Array.isArray(rows) ? rows.length : 1,
+    };
   } catch (error) {
     console.error('Database query error:', error);
     throw error;
@@ -33,17 +51,17 @@ export async function query(text: string, params?: any[]) {
 }
 
 // Helper function for transactions
-export async function transaction<T>(callback: (client: any) => Promise<T>): Promise<T> {
-  const client = await pool.connect();
+export async function transaction<T>(callback: (connection: any) => Promise<T>): Promise<T> {
+  const connection = await pool.getConnection();
   try {
-    await client.query('BEGIN');
-    const result = await callback(client);
-    await client.query('COMMIT');
+    await connection.beginTransaction();
+    const result = await callback(connection);
+    await connection.commit();
     return result;
   } catch (error) {
-    await client.query('ROLLBACK');
+    await connection.rollback();
     throw error;
   } finally {
-    client.release();
+    connection.release();
   }
 }

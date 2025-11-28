@@ -1,6 +1,6 @@
 # Bayside Hospital Management System (HMS)
 
-A comprehensive, full-stack hospital management system built with Next.js, TypeScript, PostgreSQL, Tailwind CSS, and Shadcn UI.
+A comprehensive, full-stack hospital management system built with Next.js, TypeScript, MySQL, Tailwind CSS, and Shadcn UI.
 
 ## Features
 
@@ -30,7 +30,7 @@ A comprehensive, full-stack hospital management system built with Next.js, TypeS
 - **Frontend**: Next.js 15, React 19, TypeScript
 - **Styling**: Tailwind CSS, Shadcn UI
 - **Backend**: Next.js API Routes
-- **Database**: PostgreSQL
+- **Database**: MySQL 8.0+
 - **Authentication**: JWT with bcrypt
 - **Date Handling**: date-fns
 - **Icons**: Lucide React
@@ -40,7 +40,7 @@ A comprehensive, full-stack hospital management system built with Next.js, TypeS
 ### Prerequisites
 
 - Node.js 18+ and npm
-- PostgreSQL 12+
+- MySQL 8.0+
 - Git
 
 ### Installation
@@ -58,8 +58,8 @@ npm install
 
 3. **Set up the database**
 
-Follow the instructions in [DATABASE_SETUP.md](./DATABASE_SETUP.md) to:
-- Install and configure PostgreSQL
+Follow the instructions in [DATABASE_SETUP_MYSQL.md](./DATABASE_SETUP_MYSQL.md) to:
+- Install and configure MySQL
 - Create the database
 - Run the schema migrations
 - Set up environment variables
@@ -69,7 +69,7 @@ Follow the instructions in [DATABASE_SETUP.md](./DATABASE_SETUP.md) to:
 Create a `.env.local` file in the root directory:
 
 ```env
-DATABASE_URL=postgresql://username:password@localhost:5432/bayside_hms
+DATABASE_URL=mysql://username:password@localhost:3306/bayside_hms
 JWT_SECRET=your_very_secure_random_string_at_least_32_characters_long
 ```
 
@@ -84,21 +84,22 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### Quick Setup
 
-1. **Create PostgreSQL database:**
+1. **Create MySQL database:**
 ```bash
-psql -U postgres
-CREATE DATABASE bayside_hms;
-CREATE USER bayside_admin WITH ENCRYPTED PASSWORD 'your_password';
-GRANT ALL PRIVILEGES ON DATABASE bayside_hms TO bayside_admin;
-\q
+sudo mysql -u root -p
+CREATE DATABASE bayside_hms CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'bayside_admin'@'localhost' IDENTIFIED BY 'your_password';
+GRANT ALL PRIVILEGES ON bayside_hms.* TO 'bayside_admin'@'localhost';
+FLUSH PRIVILEGES;
+EXIT;
 ```
 
 2. **Run schema:**
 ```bash
-psql -U bayside_admin -d bayside_hms -f database/schema.sql
+mysql -u bayside_admin -p bayside_hms < database/schema-mysql.sql
 ```
 
-For detailed setup instructions including production hosting options, see [DATABASE_SETUP.md](./DATABASE_SETUP.md).
+For detailed setup instructions including production hosting options, see [DATABASE_SETUP_MYSQL.md](./DATABASE_SETUP_MYSQL.md).
 
 ## Project Structure
 
@@ -130,9 +131,11 @@ bayside-hms/
 │   ├── auth.ts                   # Authentication utilities
 │   └── utils.ts                  # Helper functions
 ├── database/                     # Database files
-│   └── schema.sql                # PostgreSQL schema
+│   ├── schema-mysql.sql          # MySQL schema
+│   └── schema.sql                # PostgreSQL schema (legacy)
 ├── middleware.ts                 # Next.js middleware
-├── DATABASE_SETUP.md             # Database setup guide
+├── DATABASE_SETUP_MYSQL.md       # MySQL database setup guide
+├── DATABASE_SETUP.md             # PostgreSQL setup guide (legacy)
 └── README.md                     # This file
 ```
 
