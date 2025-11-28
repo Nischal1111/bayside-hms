@@ -1,84 +1,148 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Activity, Calendar, FileText, Users } from "lucide-react";
+import { Activity, Calendar, FileText, Users, Shield, HeartPulse, ClipboardList, DollarSign } from "lucide-react";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
       {/* Header */}
-      <header className="border-b bg-white/50 backdrop-blur-sm">
+      <header className="border-b border-primary/10 bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Activity className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold text-gray-900">Bayside HMS</h1>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div className="absolute inset-0 bg-primary/20 blur-md rounded-full"></div>
+              <Activity className="h-8 w-8 text-primary relative z-10" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">Bayside HMS</h1>
+              <p className="text-xs text-muted-foreground">Healthcare Excellence</p>
+            </div>
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-3">
+            <Link href="/admin">
+              <Button variant="outline" size="sm" className="gap-2">
+                <Shield className="h-4 w-4" />
+                Admin
+              </Button>
+            </Link>
             <Link href="/login">
-              <Button variant="ghost">Login</Button>
+              <Button variant="ghost" size="sm">Login</Button>
             </Link>
             <Link href="/register">
-              <Button>Register</Button>
+              <Button size="sm" className="shadow-md hover:shadow-lg transition-shadow">
+                Get Started
+              </Button>
             </Link>
           </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20 text-center">
-        <h2 className="text-5xl font-bold mb-6 text-gray-900">
-          Welcome to Bayside Hospital Management System
+      <section className="container mx-auto px-4 py-24 text-center">
+        <div className="inline-block mb-4">
+          <span className="bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium">
+            Modern Healthcare Management
+          </span>
+        </div>
+        <h2 className="text-6xl font-bold mb-6 text-foreground bg-gradient-to-r from-primary to-emerald-600 bg-clip-text text-transparent">
+          Bayside Hospital Management System
         </h2>
-        <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-          A comprehensive solution for managing outpatient services, appointments,
-          medical records, billing, and more.
+        <p className="text-xl text-muted-foreground mb-10 max-w-3xl mx-auto leading-relaxed">
+          A comprehensive, secure, and modern solution for managing outpatient services,
+          appointments, electronic medical records, billing, and analytics.
         </p>
-        <div className="flex gap-4 justify-center">
+        <div className="flex gap-4 justify-center flex-wrap">
           <Link href="/register">
-            <Button size="lg" className="text-lg px-8">
-              Get Started
+            <Button size="lg" className="text-lg px-10 py-6 shadow-lg hover:shadow-xl transition-all">
+              Get Started Free
             </Button>
           </Link>
           <Link href="/login">
-            <Button size="lg" variant="outline" className="text-lg px-8">
+            <Button size="lg" variant="outline" className="text-lg px-10 py-6 border-2">
               Sign In
+            </Button>
+          </Link>
+          <Link href="/admin">
+            <Button size="lg" variant="secondary" className="text-lg px-10 py-6 gap-2">
+              <Shield className="h-5 w-5" />
+              Admin Portal
             </Button>
           </Link>
         </div>
       </section>
 
       {/* Features */}
-      <section className="container mx-auto px-4 py-16">
-        <h3 className="text-3xl font-bold text-center mb-12 text-gray-900">
-          Key Features
-        </h3>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+      <section className="container mx-auto px-4 py-20">
+        <div className="text-center mb-16">
+          <h3 className="text-4xl font-bold mb-4 text-foreground">
+            Comprehensive Features
+          </h3>
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+            Everything you need to manage a modern healthcare facility efficiently
+          </p>
+        </div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           <FeatureCard
-            icon={<Users className="h-12 w-12 text-primary" />}
+            icon={<Users className="h-12 w-12" />}
             title="Patient Management"
-            description="Easy patient registration and comprehensive health records management"
+            description="Easy patient registration with comprehensive health records and dual-layer validation"
           />
           <FeatureCard
-            icon={<Calendar className="h-12 w-12 text-primary" />}
+            icon={<Calendar className="h-12 w-12" />}
             title="Appointment Scheduling"
-            description="Interactive calendar for scheduling and managing appointments"
+            description="Interactive calendar with conflict resolution and real-time availability"
           />
           <FeatureCard
-            icon={<FileText className="h-12 w-12 text-primary" />}
-            title="Medical Records"
-            description="Complete electronic medical records with diagnosis and prescriptions"
+            icon={<HeartPulse className="h-12 w-12" />}
+            title="Electronic Medical Records"
+            description="Complete EMR system with diagnosis, prescriptions, and treatment history"
           />
           <FeatureCard
-            icon={<Activity className="h-12 w-12 text-primary" />}
-            title="Analytics & Reports"
-            description="Comprehensive reporting and analytics dashboard"
+            icon={<ClipboardList className="h-12 w-12" />}
+            title="Analytics & Reporting"
+            description="Comprehensive dashboards with charts and performance indicators"
+          />
+          <FeatureCard
+            icon={<DollarSign className="h-12 w-12" />}
+            title="Billing & Payments"
+            description="Automated invoice generation and payment processing with secure gateway"
+          />
+          <FeatureCard
+            icon={<FileText className="h-12 w-12" />}
+            title="Patient Feedback"
+            description="Rating and feedback system for continuous quality improvement"
+          />
+          <FeatureCard
+            icon={<Shield className="h-12 w-12" />}
+            title="Role-Based Access"
+            description="Secure RBAC with JWT authentication and session management"
+          />
+          <FeatureCard
+            icon={<Activity className="h-12 w-12" />}
+            title="Real-time Monitoring"
+            description="Live system monitoring with performance optimization"
           />
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t bg-gray-50 mt-20">
-        <div className="container mx-auto px-4 py-8 text-center text-gray-600">
-          <p>&copy; 2025 Bayside Hospital Management System. All rights reserved.</p>
+      <footer className="border-t border-primary/10 bg-white/50 backdrop-blur-sm mt-20">
+        <div className="container mx-auto px-4 py-10">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Activity className="h-6 w-6 text-primary" />
+              <span className="font-semibold text-foreground">Bayside HMS</span>
+            </div>
+            <p className="text-muted-foreground text-sm">
+              &copy; 2025 Bayside Hospital Management System. All rights reserved.
+            </p>
+            <Link href="/admin">
+              <Button variant="ghost" size="sm" className="gap-2">
+                <Shield className="h-4 w-4" />
+                Admin Access
+              </Button>
+            </Link>
+          </div>
         </div>
       </footer>
     </div>
@@ -87,10 +151,12 @@ export default function Home() {
 
 function FeatureCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-      <div className="mb-4">{icon}</div>
-      <h4 className="text-xl font-semibold mb-2 text-gray-900">{title}</h4>
-      <p className="text-gray-600">{description}</p>
+    <div className="group bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-300 border border-primary/10 hover:border-primary/30 hover:-translate-y-1">
+      <div className="mb-4 text-primary group-hover:scale-110 transition-transform duration-300">
+        {icon}
+      </div>
+      <h4 className="text-xl font-bold mb-3 text-foreground">{title}</h4>
+      <p className="text-muted-foreground leading-relaxed">{description}</p>
     </div>
   );
 }
