@@ -7,8 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserPlus, Calendar, DollarSign } from "lucide-react";
+import { Users, UserPlus, Calendar, DollarSign, Plus } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -25,6 +29,34 @@ export default function AdminDashboard() {
   const [doctors, setDoctors] = useState<any[]>([]);
   const [pendingDoctors, setPendingDoctors] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [specializations, setSpecializations] = useState<any[]>([]);
+  const [showAddPatient, setShowAddPatient] = useState(false);
+  const [showAddDoctor, setShowAddDoctor] = useState(false);
+
+  // Patient form
+  const [patientForm, setPatientForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    phoneNumber: "",
+    dateOfBirth: "",
+    gender: "",
+    bloodGroup: "",
+    address: "",
+    emergencyContact: "",
+  });
+
+  // Doctor form
+  const [doctorForm, setDoctorForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    phoneNumber: "",
+    licenseNumber: "",
+    specializationId: "",
+  });
 
   useEffect(() => {
     fetchUser();
@@ -32,6 +64,7 @@ export default function AdminDashboard() {
     fetchPatients();
     fetchDoctors();
     fetchPendingDoctors();
+    fetchSpecializations();
   }, []);
 
   const fetchUser = async () => {
@@ -90,6 +123,16 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchSpecializations = async () => {
+    try {
+      const response = await fetch("/api/specializations");
+      const data = await response.json();
+      setSpecializations(data.specializations || []);
+    } catch (error) {
+      console.error("Failed to fetch specializations:", error);
+    }
+  };
+
   const handleApproveDoctor = async (userId: string) => {
     try {
       const response = await fetch("/api/admin/approve-doctor", {
@@ -106,6 +149,95 @@ export default function AdminDashboard() {
       });
 
       fetchPendingDoctors();
+      fetchDoctors();
+      fetchStats();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddPatient = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      const response = await fetch("/api/admin/add-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: "patient",
+          ...patientForm,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.error || "Failed to add patient");
+
+      toast({
+        title: "Success",
+        description: "Patient added successfully",
+      });
+
+      setShowAddPatient(false);
+      setPatientForm({
+        firstName: "",
+        lastName: "",
+        email: "",
+        password: "",
+        phoneNumber: "",
+        dateOfBirth: "",
+        gender: "",
+        bloodGroup: "",
+        address: "",
+        emergencyContact: "",
+      });
+      fetchPatients();
+      fetchStats();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddDoctor = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      const response = await fetch("/api/admin/add-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: "doctor",
+          ...doctorForm,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.error || "Failed to add doctor");
+
+      toast({
+        title: "Success",
+        description: "Doctor added successfully and activated",
+      });
+
+      setShowAddDoctor(false);
+      setDoctorForm({
+        firstName: "",
+        lastName: "",
+        email: "",
+        password: "",
+        phoneNumber: "",
+        licenseNumber: "",
+        specializationId: "",
+      });
       fetchDoctors();
       fetchStats();
     } catch (error: any) {
@@ -234,9 +366,115 @@ export default function AdminDashboard() {
 
           <TabsContent value="doctors" className="space-y-4">
             <Card>
-              <CardHeader>
-                <CardTitle>Active Doctors</CardTitle>
-                <CardDescription>List of all approved doctors</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Active Doctors</CardTitle>
+                  <CardDescription>List of all approved doctors</CardDescription>
+                </div>
+                <Dialog open={showAddDoctor} onOpenChange={setShowAddDoctor}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Doctor
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Add New Doctor</DialogTitle>
+                      <DialogDescription>
+                        Create a new doctor account. The doctor will be activated immediately.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleAddDoctor} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="doctorFirstName">First Name *</Label>
+                          <Input
+                            id="doctorFirstName"
+                            value={doctorForm.firstName}
+                            onChange={(e) => setDoctorForm({ ...doctorForm, firstName: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="doctorLastName">Last Name *</Label>
+                          <Input
+                            id="doctorLastName"
+                            value={doctorForm.lastName}
+                            onChange={(e) => setDoctorForm({ ...doctorForm, lastName: e.target.value })}
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="doctorEmail">Email *</Label>
+                        <Input
+                          id="doctorEmail"
+                          type="email"
+                          value={doctorForm.email}
+                          onChange={(e) => setDoctorForm({ ...doctorForm, email: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="doctorPassword">Password *</Label>
+                        <Input
+                          id="doctorPassword"
+                          type="password"
+                          value={doctorForm.password}
+                          onChange={(e) => setDoctorForm({ ...doctorForm, password: e.target.value })}
+                          minLength={8}
+                          required
+                        />
+                        <p className="text-xs text-muted-foreground">Minimum 8 characters</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="doctorPhone">Phone Number *</Label>
+                        <Input
+                          id="doctorPhone"
+                          type="tel"
+                          value={doctorForm.phoneNumber}
+                          onChange={(e) => setDoctorForm({ ...doctorForm, phoneNumber: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="doctorLicense">License Number *</Label>
+                        <Input
+                          id="doctorLicense"
+                          value={doctorForm.licenseNumber}
+                          onChange={(e) => setDoctorForm({ ...doctorForm, licenseNumber: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="doctorSpecialization">Specialization *</Label>
+                        <Select
+                          value={doctorForm.specializationId}
+                          onValueChange={(value) => setDoctorForm({ ...doctorForm, specializationId: value })}
+                          required
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose specialization" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {specializations.map((spec) => (
+                              <SelectItem key={spec.id} value={spec.id}>
+                                {spec.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button type="button" variant="outline" onClick={() => setShowAddDoctor(false)}>
+                          Cancel
+                        </Button>
+                        <Button type="submit">Add Doctor</Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -261,9 +499,159 @@ export default function AdminDashboard() {
 
           <TabsContent value="patients" className="space-y-4">
             <Card>
-              <CardHeader>
-                <CardTitle>Registered Patients</CardTitle>
-                <CardDescription>List of all registered patients</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Registered Patients</CardTitle>
+                  <CardDescription>List of all registered patients</CardDescription>
+                </div>
+                <Dialog open={showAddPatient} onOpenChange={setShowAddPatient}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Patient
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Add New Patient</DialogTitle>
+                      <DialogDescription>
+                        Create a new patient account. The patient will be activated immediately.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleAddPatient} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="patientFirstName">First Name *</Label>
+                          <Input
+                            id="patientFirstName"
+                            value={patientForm.firstName}
+                            onChange={(e) => setPatientForm({ ...patientForm, firstName: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="patientLastName">Last Name *</Label>
+                          <Input
+                            id="patientLastName"
+                            value={patientForm.lastName}
+                            onChange={(e) => setPatientForm({ ...patientForm, lastName: e.target.value })}
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="patientEmail">Email *</Label>
+                        <Input
+                          id="patientEmail"
+                          type="email"
+                          value={patientForm.email}
+                          onChange={(e) => setPatientForm({ ...patientForm, email: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="patientPassword">Password *</Label>
+                        <Input
+                          id="patientPassword"
+                          type="password"
+                          value={patientForm.password}
+                          onChange={(e) => setPatientForm({ ...patientForm, password: e.target.value })}
+                          minLength={8}
+                          required
+                        />
+                        <p className="text-xs text-muted-foreground">Minimum 8 characters</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="patientPhone">Phone Number *</Label>
+                          <Input
+                            id="patientPhone"
+                            type="tel"
+                            value={patientForm.phoneNumber}
+                            onChange={(e) => setPatientForm({ ...patientForm, phoneNumber: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="patientDOB">Date of Birth *</Label>
+                          <Input
+                            id="patientDOB"
+                            type="date"
+                            value={patientForm.dateOfBirth}
+                            onChange={(e) => setPatientForm({ ...patientForm, dateOfBirth: e.target.value })}
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="patientGender">Gender *</Label>
+                          <Select
+                            value={patientForm.gender}
+                            onValueChange={(value) => setPatientForm({ ...patientForm, gender: value })}
+                            required
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select gender" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="male">Male</SelectItem>
+                              <SelectItem value="female">Female</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="patientBloodGroup">Blood Group *</Label>
+                          <Select
+                            value={patientForm.bloodGroup}
+                            onValueChange={(value) => setPatientForm({ ...patientForm, bloodGroup: value })}
+                            required
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select blood group" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="A+">A+</SelectItem>
+                              <SelectItem value="A-">A-</SelectItem>
+                              <SelectItem value="B+">B+</SelectItem>
+                              <SelectItem value="B-">B-</SelectItem>
+                              <SelectItem value="AB+">AB+</SelectItem>
+                              <SelectItem value="AB-">AB-</SelectItem>
+                              <SelectItem value="O+">O+</SelectItem>
+                              <SelectItem value="O-">O-</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="patientAddress">Address *</Label>
+                        <Input
+                          id="patientAddress"
+                          value={patientForm.address}
+                          onChange={(e) => setPatientForm({ ...patientForm, address: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="patientEmergency">Emergency Contact *</Label>
+                        <Input
+                          id="patientEmergency"
+                          type="tel"
+                          value={patientForm.emergencyContact}
+                          onChange={(e) => setPatientForm({ ...patientForm, emergencyContact: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button type="button" variant="outline" onClick={() => setShowAddPatient(false)}>
+                          Cancel
+                        </Button>
+                        <Button type="submit">Add Patient</Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
