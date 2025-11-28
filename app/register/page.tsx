@@ -110,18 +110,24 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-white p-4">
-      <div className="w-full max-w-2xl">
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <Activity className="h-10 w-10 text-primary" />
-          <h1 className="text-3xl font-bold text-gray-900">Bayside HMS</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-4 py-12">
+      <div className="w-full max-w-3xl">
+        <div className="flex flex-col items-center justify-center gap-3 mb-8">
+          <div className="relative">
+            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full"></div>
+            <Activity className="h-12 w-12 text-primary relative z-10" />
+          </div>
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-foreground">Bayside HMS</h1>
+            <p className="text-sm text-muted-foreground">Healthcare Management System</p>
+          </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Register</CardTitle>
+        <Card className="shadow-xl border-primary/20">
+          <CardHeader className="space-y-1 pb-4">
+            <CardTitle className="text-2xl">Create Account</CardTitle>
             <CardDescription>
-              Create a new account to access the hospital management system
+              Join Bayside HMS to access comprehensive healthcare management services
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
@@ -316,16 +322,42 @@ export default function RegisterPage() {
             <CardFooter className="flex flex-col gap-4">
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full h-11 text-base font-medium shadow-md hover:shadow-lg transition-shadow"
                 disabled={isLoading}
               >
-                {isLoading ? "Creating account..." : "Register"}
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Creating your account...
+                  </span>
+                ) : (
+                  "Create Account"
+                )}
               </Button>
-              <div className="text-sm text-center text-gray-600">
-                Already have an account?{" "}
-                <Link href="/login" className="text-primary hover:underline font-medium">
-                  Login here
-                </Link>
+
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">
+                    Or
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-sm text-center space-y-2">
+                <p className="text-muted-foreground">
+                  Already have an account?{" "}
+                  <Link href="/login" className="text-primary hover:underline font-medium">
+                    Sign in here
+                  </Link>
+                </p>
+                <p className="text-muted-foreground">
+                  <Link href="/" className="text-primary hover:underline font-medium">
+                    Back to home
+                  </Link>
+                </p>
               </div>
             </CardFooter>
           </form>
