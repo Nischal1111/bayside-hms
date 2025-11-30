@@ -7,12 +7,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserPlus, Calendar, DollarSign, Plus } from "lucide-react";
+import { Users, UserPlus, Calendar, DollarSign, Plus, Trash2, Search } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { format } from "date-fns";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -28,10 +40,13 @@ export default function AdminDashboard() {
   const [patients, setPatients] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
   const [pendingDoctors, setPendingDoctors] = useState<any[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [specializations, setSpecializations] = useState<any[]>([]);
   const [showAddPatient, setShowAddPatient] = useState(false);
   const [showAddDoctor, setShowAddDoctor] = useState(false);
+  const [doctorSearch, setDoctorSearch] = useState("");
+  const [patientSearch, setPatientSearch] = useState("");
 
   // Patient form
   const [patientForm, setPatientForm] = useState({
@@ -65,6 +80,7 @@ export default function AdminDashboard() {
     fetchDoctors();
     fetchPendingDoctors();
     fetchSpecializations();
+    fetchInvoices();
   }, []);
 
   const fetchUser = async () => {
@@ -130,6 +146,16 @@ export default function AdminDashboard() {
       setSpecializations(data.specializations || []);
     } catch (error) {
       console.error("Failed to fetch specializations:", error);
+    }
+  };
+
+  const fetchInvoices = async () => {
+    try {
+      const response = await fetch("/api/admin/invoices");
+      const data = await response.json();
+      setInvoices(data.invoices || []);
+    } catch (error) {
+      console.error("Failed to fetch invoices:", error);
     }
   };
 
@@ -249,9 +275,74 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteDoctor = async (userId: string, doctorName: string) => {
+    try {
+      const response = await fetch("/api/admin/delete-user", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, role: "doctor" }),
+      });
+
+      if (!response.ok) throw new Error("Failed to delete doctor");
+
+      toast({
+        title: "Success",
+        description: `Dr. ${doctorName} has been deleted successfully`,
+      });
+
+      fetchDoctors();
+      fetchStats();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeletePatient = async (userId: string, patientName: string) => {
+    try {
+      const response = await fetch("/api/admin/delete-user", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, role: "patient" }),
+      });
+
+      if (!response.ok) throw new Error("Failed to delete patient");
+
+      toast({
+        title: "Success",
+        description: `${patientName} has been deleted successfully`,
+      });
+
+      fetchPatients();
+      fetchStats();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
+
+  // Filter doctors and patients based on search
+  const filteredDoctors = doctors.filter((doctor) =>
+    `${doctor.first_name} ${doctor.last_name} ${doctor.specialization_name} ${doctor.license_number}`
+      .toLowerCase()
+      .includes(doctorSearch.toLowerCase())
+  );
+
+  const filteredPatients = patients.filter((patient) =>
+    `${patient.first_name} ${patient.last_name} ${patient.email} ${patient.phone_number}`
+      .toLowerCase()
+      .includes(patientSearch.toLowerCase())
+  );
 
   const userName = user?.profile ? `${user.profile.first_name} ${user.profile.last_name}` : "Admin";
 
@@ -269,6 +360,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="approvals">Pending Approvals</TabsTrigger>
             <TabsTrigger value="doctors">Manage Doctors</TabsTrigger>
             <TabsTrigger value="patients">Manage Patients</TabsTrigger>
+            <TabsTrigger value="billing">Billing</TabsTrigger>
           </TabsList>
 
           {/* Dashboard Tab */}
@@ -478,17 +570,56 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {doctors.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No doctors</p>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search doctors by name, specialization, or license..."
+                      value={doctorSearch}
+                      onChange={(e) => setDoctorSearch(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  {filteredDoctors.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      {doctorSearch ? "No doctors found matching your search" : "No doctors"}
+                    </p>
                   ) : (
-                    doctors.map((doctor) => (
+                    filteredDoctors.map((doctor) => (
                       <div key={doctor.id} className="flex items-center justify-between border-b pb-4">
                         <div>
                           <p className="font-medium">Dr. {doctor.first_name} {doctor.last_name}</p>
                           <p className="text-sm text-muted-foreground">{doctor.specialization_name}</p>
                           <p className="text-sm text-muted-foreground">{doctor.phone_number}</p>
+                          <p className="text-xs text-muted-foreground">License: {doctor.license_number}</p>
                         </div>
-                        <Badge>Active</Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge>Active</Badge>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive" size="sm">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Doctor</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete Dr. {doctor.first_name} {doctor.last_name}?
+                                  This will permanently remove their account and all associated data. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteDoctor(doctor.user_id, `${doctor.first_name} ${doctor.last_name}`)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
                     ))
                   )}
@@ -655,18 +786,100 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {patients.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No patients</p>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search patients by name, email, or phone..."
+                      value={patientSearch}
+                      onChange={(e) => setPatientSearch(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  {filteredPatients.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      {patientSearch ? "No patients found matching your search" : "No patients"}
+                    </p>
                   ) : (
-                    patients.map((patient) => (
+                    filteredPatients.map((patient) => (
                       <div key={patient.id} className="flex items-center justify-between border-b pb-4">
                         <div>
                           <p className="font-medium">{patient.first_name} {patient.last_name}</p>
                           <p className="text-sm text-muted-foreground">{patient.phone_number}</p>
                           <p className="text-sm text-muted-foreground">{patient.email}</p>
                         </div>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Patient</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete {patient.first_name} {patient.last_name}?
+                                This will permanently remove their account and all associated data including medical records, appointments, and invoices. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeletePatient(patient.user_id, `${patient.first_name} ${patient.last_name}`)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Billing Tab */}
+          <TabsContent value="billing" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>All Invoices</CardTitle>
+                <CardDescription>View all patient invoices and payment statuses</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {invoices.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No invoices</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-2">Invoice #</th>
+                            <th className="text-left p-2">Patient</th>
+                            <th className="text-left p-2">Date</th>
+                            <th className="text-left p-2">Amount</th>
+                            <th className="text-left p-2">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {invoices.map((invoice) => (
+                            <tr key={invoice.id} className="border-b">
+                              <td className="p-2 font-mono text-sm">{invoice.invoice_number}</td>
+                              <td className="p-2">{invoice.patient_name}</td>
+                              <td className="p-2">{format(new Date(invoice.created_at), "MMM dd, yyyy")}</td>
+                              <td className="p-2 font-semibold">${invoice.total_amount}</td>
+                              <td className="p-2">
+                                <Badge variant={invoice.status === "paid" ? "default" : "destructive"}>
+                                  {invoice.status}
+                                </Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
                 </div>
               </CardContent>

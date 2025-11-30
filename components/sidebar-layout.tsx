@@ -76,6 +76,7 @@ export function SidebarLayout({ children, userRole, userName, activeTab = "dashb
         { id: "approvals", label: "Pending Approvals", icon: User },
         { id: "doctors", label: "Manage Doctors", icon: User },
         { id: "patients", label: "Manage Patients", icon: User },
+        { id: "billing", label: "Billing & Invoices", icon: CreditCard },
       ];
     }
     return [];
