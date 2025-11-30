@@ -19,7 +19,7 @@ export async function GET() {
     }
 
     const result = await query(`
-      SELECT f.*, p.first_name || ' ' || p.last_name as patient_name
+      SELECT f.*, CONCAT(p.first_name, ' ', p.last_name) as patient_name
       FROM feedback f
       JOIN patients p ON f.patient_id = p.id
       WHERE f.doctor_id = $1

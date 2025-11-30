@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
@@ -25,7 +26,7 @@ export async function GET() {
       result = await query(`
         SELECT
           a.*,
-          d.first_name || ' ' || d.last_name as doctor_name,
+          CONCAT(d.first_name, ' ', d.last_name) as doctor_name,
           s.name as specialization
         FROM appointments a
         JOIN doctors d ON a.doctor_id = d.id
@@ -47,7 +48,7 @@ export async function GET() {
       result = await query(`
         SELECT
           a.*,
-          p.first_name || ' ' || p.last_name as patient_name,
+          CONCAT(p.first_name, ' ', p.last_name) as patient_name,
           p.phone_number as patient_phone
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
@@ -59,8 +60,8 @@ export async function GET() {
       result = await query(`
         SELECT
           a.*,
-          p.first_name || ' ' || p.last_name as patient_name,
-          d.first_name || ' ' || d.last_name as doctor_name
+          CONCAT(p.first_name, ' ', p.last_name) as patient_name,
+          CONCAT(d.first_name, ' ', d.last_name) as doctor_name
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
         JOIN doctors d ON a.doctor_id = d.id
@@ -111,11 +112,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Create appointment
+    const appointmentId = randomUUID();
+    await query(
+      `INSERT INTO appointments (id, patient_id, doctor_id, appointment_date, appointment_time, reason_for_visit, status)
+       VALUES ($1, $2, $3, $4, $5, $6, 'pending')`,
+      [appointmentId, patientId, doctorId, date, time, reason]
+    );
+
     const result = await query(
-      `INSERT INTO appointments (patient_id, doctor_id, appointment_date, appointment_time, reason_for_visit, status)
-       VALUES ($1, $2, $3, $4, $5, 'pending')
-       RETURNING *`,
-      [patientId, doctorId, date, time, reason]
+      'SELECT * FROM appointments WHERE id = $1',
+      [appointmentId]
     );
 
     return NextResponse.json({
