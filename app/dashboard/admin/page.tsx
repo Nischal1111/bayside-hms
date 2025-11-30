@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserPlus, Calendar, DollarSign, Plus, Trash2, Search } from "lucide-react";
+import { Users, UserPlus, Calendar, DollarSign, Plus, Receipt, ClipboardList, Trash2, Search } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -40,13 +40,33 @@ export default function AdminDashboard() {
   const [patients, setPatients] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
   const [pendingDoctors, setPendingDoctors] = useState<any[]>([]);
+  const [billingQueue, setBillingQueue] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [specializations, setSpecializations] = useState<any[]>([]);
-  const [showAddPatient, setShowAddPatient] = useState(false);
-  const [showAddDoctor, setShowAddDoctor] = useState(false);
   const [doctorSearch, setDoctorSearch] = useState("");
   const [patientSearch, setPatientSearch] = useState("");
+  const [showAddPatient, setShowAddPatient] = useState(false);
+  const [showAddDoctor, setShowAddDoctor] = useState(false);
+  const [billingDialogOpen, setBillingDialogOpen] = useState(false);
+  const [selectedBillingAppointment, setSelectedBillingAppointment] = useState<any>(null);
+  const [billingForm, setBillingForm] = useState({
+    paidAmount: "",
+    discountAmount: "",
+    taxAmount: "",
+    dueDate: "",
+  });
+  const [billingItems, setBillingItems] = useState([
+    { description: "Consultation Fee", quantity: "1", unitPrice: "" },
+  ]);
+  const billingSubtotal = billingItems.reduce((sum, item) => {
+    const qty = Number(item.quantity) || 0;
+    const price = parseFloat(item.unitPrice) || 0;
+    return sum + qty * price;
+  }, 0);
+  const billingDiscount = parseFloat(billingForm.discountAmount) || 0;
+  const billingTax = parseFloat(billingForm.taxAmount) || 0;
+  const billingTotal = Math.max(billingSubtotal - billingDiscount + billingTax, 0);
 
   // Patient form
   const [patientForm, setPatientForm] = useState({
@@ -80,8 +100,15 @@ export default function AdminDashboard() {
     fetchDoctors();
     fetchPendingDoctors();
     fetchSpecializations();
-    fetchInvoices();
+    fetchBillingQueue();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "billing") {
+      fetchBillingQueue();
+      fetchInvoices();
+    }
+  }, [activeTab]);
 
   const fetchUser = async () => {
     try {
@@ -149,11 +176,25 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchBillingQueue = async () => {
+    try {
+      const response = await fetch("/api/admin/billing");
+      const data = await response.json();
+      if (response.ok) {
+        setBillingQueue(data.queue || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch billing queue:", error);
+    }
+  };
+
   const fetchInvoices = async () => {
     try {
-      const response = await fetch("/api/admin/invoices");
+      const response = await fetch("/api/invoices");
       const data = await response.json();
-      setInvoices(data.invoices || []);
+      if (response.ok) {
+        setInvoices(data.invoices || []);
+      }
     } catch (error) {
       console.error("Failed to fetch invoices:", error);
     }
@@ -283,7 +324,9 @@ export default function AdminDashboard() {
         body: JSON.stringify({ userId, role: "doctor" }),
       });
 
-      if (!response.ok) throw new Error("Failed to delete doctor");
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.error || "Failed to delete doctor");
 
       toast({
         title: "Success",
@@ -309,7 +352,9 @@ export default function AdminDashboard() {
         body: JSON.stringify({ userId, role: "patient" }),
       });
 
-      if (!response.ok) throw new Error("Failed to delete patient");
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.error || "Failed to delete patient");
 
       toast({
         title: "Success",
@@ -318,6 +363,104 @@ export default function AdminDashboard() {
 
       fetchPatients();
       fetchStats();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const resetBillingState = () => {
+    setBillingForm({
+      paidAmount: "",
+      discountAmount: "",
+      taxAmount: "",
+      dueDate: "",
+    });
+    setBillingItems([{ description: "Consultation Fee", quantity: "1", unitPrice: "" }]);
+  };
+
+  const openBillingDialog = (appointment: any) => {
+    setSelectedBillingAppointment(appointment);
+    resetBillingState();
+    setBillingDialogOpen(true);
+  };
+
+  const closeBillingDialog = () => {
+    setBillingDialogOpen(false);
+    setSelectedBillingAppointment(null);
+  };
+
+  const updateBillingItem = (index: number, field: "description" | "quantity" | "unitPrice", value: string) => {
+    setBillingItems((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  const addBillingItem = () => {
+    setBillingItems((prev) => [...prev, { description: "", quantity: "1", unitPrice: "" }]);
+  };
+
+  const removeBillingItem = (index: number) => {
+    setBillingItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleCreateInvoice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedBillingAppointment) {
+      return;
+    }
+
+    if (billingTotal <= 0) {
+      toast({
+        title: "Invalid total",
+        description: "Please add at least one billable item with a value",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const payload = {
+        appointmentId: selectedBillingAppointment.id,
+        totalAmount: billingTotal,
+        paidAmount: parseFloat(billingForm.paidAmount) || 0,
+        discountAmount: billingDiscount,
+        taxAmount: billingTax,
+        dueDate: billingForm.dueDate || null,
+        items: billingItems
+          .filter((item) => item.description && (parseFloat(item.unitPrice) || 0) > 0)
+          .map((item) => ({
+            description: item.description,
+            quantity: Number(item.quantity) || 1,
+            unitPrice: parseFloat(item.unitPrice) || 0,
+          })),
+      };
+
+      const response = await fetch("/api/admin/billing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create invoice");
+      }
+
+      toast({
+        title: "Invoice created",
+        description: "Billing has been recorded for this appointment",
+      });
+
+      closeBillingDialog();
+      fetchBillingQueue();
+      fetchInvoices();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -360,7 +503,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="approvals">Pending Approvals</TabsTrigger>
             <TabsTrigger value="doctors">Manage Doctors</TabsTrigger>
             <TabsTrigger value="patients">Manage Patients</TabsTrigger>
-            <TabsTrigger value="billing">Billing</TabsTrigger>
+            <TabsTrigger value="billing">Billing Queue</TabsTrigger>
           </TabsList>
 
           {/* Dashboard Tab */}
@@ -410,7 +553,7 @@ export default function AdminDashboard() {
                 <CardTitle>Quick Actions</CardTitle>
                 <CardDescription>Manage hospital operations</CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-4 md:grid-cols-3">
+              <CardContent className="grid gap-4 md:grid-cols-4">
                 <Button onClick={() => setActiveTab("approvals")} className="h-20" disabled={stats.pendingApprovals === 0}>
                   <UserPlus className="mr-2 h-5 w-5" />
                   Pending Approvals ({stats.pendingApprovals})
@@ -422,6 +565,10 @@ export default function AdminDashboard() {
                 <Button onClick={() => setActiveTab("patients")} variant="outline" className="h-20">
                   <Users className="mr-2 h-5 w-5" />
                   Manage Patients
+                </Button>
+                <Button onClick={() => setActiveTab("billing")} variant="outline" className="h-20">
+                  <Receipt className="mr-2 h-5 w-5" />
+                  Billing Queue ({billingQueue.length})
                 </Button>
               </CardContent>
             </Card>
@@ -840,46 +987,83 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
-          {/* Billing Tab */}
           <TabsContent value="billing" className="space-y-4">
             <Card>
               <CardHeader>
+                <CardTitle>Billing Queue</CardTitle>
+                <CardDescription>Generate invoices for completed appointments</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {billingQueue.length === 0 ? (
+                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                      <ClipboardList className="h-4 w-4" />
+                      All caught up! No completed appointments are waiting for billing.
+                    </p>
+                  ) : (
+                    billingQueue.map((item) => (
+                      <div key={item.id} className="border rounded-lg p-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                        <div>
+                          <p className="font-medium">{item.patient_name}</p>
+                          <p className="text-sm text-muted-foreground">Doctor: {item.doctor_name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(item.appointment_date).toLocaleDateString()} at {item.appointment_time}
+                          </p>
+                          {item.reason_for_visit && (
+                            <p className="text-sm text-muted-foreground">Reason: {item.reason_for_visit}</p>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-2 md:items-end">
+                          <Badge variant="secondary">Completed</Badge>
+                          <Button size="sm" onClick={() => openBillingDialog(item)}>
+                            <Receipt className="mr-2 h-4 w-4" />
+                            Create Invoice
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
                 <CardTitle>All Invoices</CardTitle>
-                <CardDescription>View all patient invoices and payment statuses</CardDescription>
+                <CardDescription>View and manage all generated invoices</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {invoices.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No invoices</p>
+                    <p className="text-sm text-muted-foreground">No invoices generated yet</p>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left p-2">Invoice #</th>
-                            <th className="text-left p-2">Patient</th>
-                            <th className="text-left p-2">Date</th>
-                            <th className="text-left p-2">Amount</th>
-                            <th className="text-left p-2">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {invoices.map((invoice) => (
-                            <tr key={invoice.id} className="border-b">
-                              <td className="p-2 font-mono text-sm">{invoice.invoice_number}</td>
-                              <td className="p-2">{invoice.patient_name}</td>
-                              <td className="p-2">{format(new Date(invoice.created_at), "MMM dd, yyyy")}</td>
-                              <td className="p-2 font-semibold">${invoice.total_amount}</td>
-                              <td className="p-2">
-                                <Badge variant={invoice.status === "paid" ? "default" : "destructive"}>
-                                  {invoice.status}
-                                </Badge>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                    invoices.map((invoice) => (
+                      <div key={invoice.id} className="flex items-center justify-between border-b pb-4">
+                        <div>
+                          <p className="font-medium">Invoice #{invoice.invoice_number}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {invoice.patient_name && `Patient: ${invoice.patient_name}`}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {format(new Date(invoice.created_at), "MMM dd, yyyy")}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold">${parseFloat(invoice.total_amount).toFixed(2)}</p>
+                          <Badge 
+                            variant={
+                              invoice.status === "paid" 
+                                ? "default" 
+                                : invoice.status === "pending" 
+                                ? "secondary" 
+                                : "destructive"
+                            }
+                          >
+                            {invoice.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
               </CardContent>
@@ -887,6 +1071,171 @@ export default function AdminDashboard() {
           </TabsContent>
         </Tabs>
       </div>
+      <Dialog open={billingDialogOpen} onOpenChange={(open) => (open ? setBillingDialogOpen(true) : closeBillingDialog())}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Invoice</DialogTitle>
+            <DialogDescription>
+              {selectedBillingAppointment
+                ? `Generate billing for ${selectedBillingAppointment.patient_name} with Dr. ${selectedBillingAppointment.doctor_name}`
+                : "Add invoice details"}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedBillingAppointment && (
+            <form onSubmit={handleCreateInvoice} className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-1 text-sm">
+                  <p className="text-muted-foreground">Patient</p>
+                  <p className="font-medium">{selectedBillingAppointment.patient_name}</p>
+                </div>
+                <div className="space-y-1 text-sm">
+                  <p className="text-muted-foreground">Doctor</p>
+                  <p className="font-medium">{selectedBillingAppointment.doctor_name}</p>
+                </div>
+                <div className="space-y-1 text-sm">
+                  <p className="text-muted-foreground">Appointment Date</p>
+                  <p className="font-medium">
+                    {new Date(selectedBillingAppointment.appointment_date).toLocaleDateString()} at {selectedBillingAppointment.appointment_time}
+                  </p>
+                </div>
+                {selectedBillingAppointment.reason_for_visit && (
+                  <div className="space-y-1 text-sm">
+                    <p className="text-muted-foreground">Reason</p>
+                    <p className="font-medium">{selectedBillingAppointment.reason_for_visit}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium">Line Items</h4>
+                  <Button type="button" variant="outline" size="sm" onClick={addBillingItem}>
+                    Add Item
+                  </Button>
+                </div>
+                <div className="space-y-3">
+                  {billingItems.map((item, index) => (
+                    <div key={index} className="grid gap-3 md:grid-cols-[2fr_1fr_1fr_auto] items-end border rounded-lg p-3">
+                      <div className="space-y-1">
+                        <Label>Description</Label>
+                        <Input
+                          value={item.description}
+                          onChange={(e) => updateBillingItem(index, "description", e.target.value)}
+                          placeholder="Service provided"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Qty</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => updateBillingItem(index, "quantity", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Unit Price</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={item.unitPrice}
+                          onChange={(e) => updateBillingItem(index, "unitPrice", e.target.value)}
+                        />
+                      </div>
+                      <div className="flex items-center justify-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeBillingItem(index)}
+                          disabled={billingItems.length === 1}
+                          aria-label="Remove line item"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Paid Amount</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={billingForm.paidAmount}
+                    onChange={(e) => setBillingForm({ ...billingForm, paidAmount: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Due Date</Label>
+                  <Input
+                    type="date"
+                    value={billingForm.dueDate}
+                    onChange={(e) => setBillingForm({ ...billingForm, dueDate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Discount</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={billingForm.discountAmount}
+                    onChange={(e) => setBillingForm({ ...billingForm, discountAmount: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tax</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={billingForm.taxAmount}
+                    onChange={(e) => setBillingForm({ ...billingForm, taxAmount: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2 rounded-lg border p-4 bg-muted/40">
+                <div className="flex justify-between text-sm">
+                  <span>Subtotal</span>
+                  <span>${billingSubtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Discount</span>
+                  <span>- ${billingDiscount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Tax</span>
+                  <span>+ ${billingTax.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-lg font-semibold">
+                  <span>Total</span>
+                  <span>${billingTotal.toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={closeBillingDialog}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={billingTotal <= 0}>
+                  Generate Invoice
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </SidebarLayout>
   );
 }

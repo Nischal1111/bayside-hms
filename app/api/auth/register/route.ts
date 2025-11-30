@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { hashPassword, generateToken, setAuthCookie } from '@/lib/auth';
@@ -52,12 +53,11 @@ export async function POST(request: NextRequest) {
     const passwordHash = await hashPassword(password);
 
     // Create user
-    const userResult = await query(
-      'INSERT INTO users (email, password_hash, role, status) VALUES ($1, $2, $3, $4) RETURNING id',
-      [email, passwordHash, role, role === 'doctor' ? 'pending' : 'active']
+    const userId = randomUUID();
+    await query(
+      'INSERT INTO users (id, email, password_hash, role, status) VALUES ($1, $2, $3, $4, $5)',
+      [userId, email, passwordHash, role, role === 'doctor' ? 'pending' : 'active']
     );
-
-    const userId = userResult.rows[0].id;
 
     // Create role-specific profile
     if (role === 'patient') {

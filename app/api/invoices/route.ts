@@ -27,7 +27,7 @@ export async function GET() {
       );
     } else {
       result = await query(`
-        SELECT i.*, p.first_name || ' ' || p.last_name as patient_name
+        SELECT i.*, CONCAT(p.first_name, ' ', p.last_name) as patient_name
         FROM invoices i
         JOIN patients p ON i.patient_id = p.id
         ORDER BY i.created_at DESC

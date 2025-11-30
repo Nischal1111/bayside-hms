@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
@@ -24,7 +25,7 @@ export async function GET() {
       result = await query(`
         SELECT
           mr.*,
-          d.first_name || ' ' || d.last_name as doctor_name
+          CONCAT(d.first_name, ' ', d.last_name) as doctor_name
         FROM medical_records mr
         LEFT JOIN doctors d ON mr.doctor_id = d.id
         WHERE mr.patient_id = $1
@@ -43,7 +44,7 @@ export async function GET() {
       result = await query(`
         SELECT
           mr.*,
-          p.first_name || ' ' || p.last_name as patient_name
+          CONCAT(p.first_name, ' ', p.last_name) as patient_name
         FROM medical_records mr
         JOIN patients p ON mr.patient_id = p.id
         WHERE mr.doctor_id = $1
@@ -53,8 +54,8 @@ export async function GET() {
       result = await query(`
         SELECT
           mr.*,
-          p.first_name || ' ' || p.last_name as patient_name,
-          d.first_name || ' ' || d.last_name as doctor_name
+          CONCAT(p.first_name, ' ', p.last_name) as patient_name,
+          CONCAT(d.first_name, ' ', d.last_name) as doctor_name
         FROM medical_records mr
         JOIN patients p ON mr.patient_id = p.id
         LEFT JOIN doctors d ON mr.doctor_id = d.id
@@ -91,11 +92,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Doctor profile not found' }, { status: 404 });
     }
 
+    const recordId = randomUUID();
+    await query(
+      `INSERT INTO medical_records (id, patient_id, doctor_id, appointment_id, diagnosis, prescription, symptoms, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [recordId, patientId, doctorResult.rows[0].id, appointmentId, diagnosis, prescription, symptoms, notes]
+    );
+
     const result = await query(
-      `INSERT INTO medical_records (patient_id, doctor_id, appointment_id, diagnosis, prescription, symptoms, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING *`,
-      [patientId, doctorResult.rows[0].id, appointmentId, diagnosis, prescription, symptoms, notes]
+      'SELECT * FROM medical_records WHERE id = $1',
+      [recordId]
     );
 
     return NextResponse.json({

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import { SidebarLayout } from "@/components/sidebar-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { Calendar as CalendarIcon, FileText, MessageSquare, CreditCard, Clock } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
@@ -295,12 +296,14 @@ export default function PatientDashboard() {
 
                     <div className="space-y-2">
                       <Label>Select Date</Label>
-                      <Calendar
-                        mode="single"
+                      <DatePicker
                         selected={selectedDate}
-                        onSelect={setSelectedDate}
-                        disabled={(date) => date < new Date()}
-                        className="rounded-md border"
+                        onChange={(date: Date | null) => setSelectedDate(date ?? undefined)}
+                        minDate={new Date()}
+                        dateFormat="MMMM d, yyyy"
+                        placeholderText="Choose a date"
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        popperClassName="z-50"
                       />
                     </div>
 
