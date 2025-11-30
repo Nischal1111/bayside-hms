@@ -13,6 +13,18 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { format } from "date-fns";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -389,6 +401,19 @@ export default function AdminDashboard() {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
+  // Filter doctors and patients based on search
+  const filteredDoctors = doctors.filter((doctor) =>
+    `${doctor.first_name} ${doctor.last_name} ${doctor.specialization_name} ${doctor.license_number}`
+      .toLowerCase()
+      .includes(doctorSearch.toLowerCase())
+  );
+
+  const filteredPatients = patients.filter((patient) =>
+    `${patient.first_name} ${patient.last_name} ${patient.email} ${patient.phone_number}`
+      .toLowerCase()
+      .includes(patientSearch.toLowerCase())
+  );
+
   const userName = user?.profile ? `${user.profile.first_name} ${user.profile.last_name}` : "Admin";
 
   return (
@@ -619,17 +644,56 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {doctors.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No doctors</p>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search doctors by name, specialization, or license..."
+                      value={doctorSearch}
+                      onChange={(e) => setDoctorSearch(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  {filteredDoctors.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      {doctorSearch ? "No doctors found matching your search" : "No doctors"}
+                    </p>
                   ) : (
-                    doctors.map((doctor) => (
+                    filteredDoctors.map((doctor) => (
                       <div key={doctor.id} className="flex items-center justify-between border-b pb-4">
                         <div>
                           <p className="font-medium">Dr. {doctor.first_name} {doctor.last_name}</p>
                           <p className="text-sm text-muted-foreground">{doctor.specialization_name}</p>
                           <p className="text-sm text-muted-foreground">{doctor.phone_number}</p>
+                          <p className="text-xs text-muted-foreground">License: {doctor.license_number}</p>
                         </div>
-                        <Badge>Active</Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge>Active</Badge>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive" size="sm">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Doctor</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete Dr. {doctor.first_name} {doctor.last_name}?
+                                  This will permanently remove their account and all associated data. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteDoctor(doctor.user_id, `${doctor.first_name} ${doctor.last_name}`)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
                     ))
                   )}
@@ -796,16 +860,52 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {patients.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No patients</p>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search patients by name, email, or phone..."
+                      value={patientSearch}
+                      onChange={(e) => setPatientSearch(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  {filteredPatients.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      {patientSearch ? "No patients found matching your search" : "No patients"}
+                    </p>
                   ) : (
-                    patients.map((patient) => (
+                    filteredPatients.map((patient) => (
                       <div key={patient.id} className="flex items-center justify-between border-b pb-4">
                         <div>
                           <p className="font-medium">{patient.first_name} {patient.last_name}</p>
                           <p className="text-sm text-muted-foreground">{patient.phone_number}</p>
                           <p className="text-sm text-muted-foreground">{patient.email}</p>
                         </div>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Patient</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete {patient.first_name} {patient.last_name}?
+                                This will permanently remove their account and all associated data including medical records, appointments, and invoices. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeletePatient(patient.user_id, `${patient.first_name} ${patient.last_name}`)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     ))
                   )}
