@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserPlus, Calendar, DollarSign, Plus, Receipt, ClipboardList, Trash2 } from "lucide-react";
+import { Users, UserPlus, Calendar, DollarSign, Plus, Receipt, ClipboardList, Trash2, Search } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -41,8 +41,11 @@ export default function AdminDashboard() {
   const [doctors, setDoctors] = useState<any[]>([]);
   const [pendingDoctors, setPendingDoctors] = useState<any[]>([]);
   const [billingQueue, setBillingQueue] = useState<any[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [specializations, setSpecializations] = useState<any[]>([]);
+  const [doctorSearch, setDoctorSearch] = useState("");
+  const [patientSearch, setPatientSearch] = useState("");
   const [showAddPatient, setShowAddPatient] = useState(false);
   const [showAddDoctor, setShowAddDoctor] = useState(false);
   const [billingDialogOpen, setBillingDialogOpen] = useState(false);
@@ -103,6 +106,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (activeTab === "billing") {
       fetchBillingQueue();
+      fetchInvoices();
     }
   }, [activeTab]);
 
@@ -181,6 +185,18 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error("Failed to fetch billing queue:", error);
+    }
+  };
+
+  const fetchInvoices = async () => {
+    try {
+      const response = await fetch("/api/invoices");
+      const data = await response.json();
+      if (response.ok) {
+        setInvoices(data.invoices || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch invoices:", error);
     }
   };
 
@@ -300,6 +316,62 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteDoctor = async (userId: string, doctorName: string) => {
+    try {
+      const response = await fetch("/api/admin/delete-user", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, role: "doctor" }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.error || "Failed to delete doctor");
+
+      toast({
+        title: "Success",
+        description: `Dr. ${doctorName} has been deleted successfully`,
+      });
+
+      fetchDoctors();
+      fetchStats();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeletePatient = async (userId: string, patientName: string) => {
+    try {
+      const response = await fetch("/api/admin/delete-user", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, role: "patient" }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.error || "Failed to delete patient");
+
+      toast({
+        title: "Success",
+        description: `${patientName} has been deleted successfully`,
+      });
+
+      fetchPatients();
+      fetchStats();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const resetBillingState = () => {
     setBillingForm({
       paidAmount: "",
@@ -388,6 +460,7 @@ export default function AdminDashboard() {
 
       closeBillingDialog();
       fetchBillingQueue();
+      fetchInvoices();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -946,6 +1019,48 @@ export default function AdminDashboard() {
                             <Receipt className="mr-2 h-4 w-4" />
                             Create Invoice
                           </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>All Invoices</CardTitle>
+                <CardDescription>View and manage all generated invoices</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {invoices.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No invoices generated yet</p>
+                  ) : (
+                    invoices.map((invoice) => (
+                      <div key={invoice.id} className="flex items-center justify-between border-b pb-4">
+                        <div>
+                          <p className="font-medium">Invoice #{invoice.invoice_number}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {invoice.patient_name && `Patient: ${invoice.patient_name}`}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {format(new Date(invoice.created_at), "MMM dd, yyyy")}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold">${parseFloat(invoice.total_amount).toFixed(2)}</p>
+                          <Badge 
+                            variant={
+                              invoice.status === "paid" 
+                                ? "default" 
+                                : invoice.status === "pending" 
+                                ? "secondary" 
+                                : "destructive"
+                            }
+                          >
+                            {invoice.status}
+                          </Badge>
                         </div>
                       </div>
                     ))
