@@ -227,6 +227,33 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleRejectDoctor = async (userId: string) => {
+    try {
+      const response = await fetch("/api/admin/reject-doctor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+
+    if (!response.ok) throw new Error("Failed to reject doctor");
+
+    toast({
+      title: "Success",
+      description: "Doctor rejected successfully",
+    });
+
+    fetchPendingDoctors();
+    fetchDoctors();
+    fetchStats();
+  } catch (error: any) {
+    toast({
+      title: "Error",
+      description: error.message,
+      variant: "destructive",
+    });
+  }
+};
+
   const handleAddPatient = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -592,9 +619,14 @@ export default function AdminDashboard() {
                           <p className="text-sm text-muted-foreground">{doctor.specialization_name}</p>
                           <p className="text-sm text-muted-foreground">License: {doctor.license_number}</p>
                         </div>
-                        <Button onClick={() => handleApproveDoctor(doctor.user_id)}>
-                          Approve
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button onClick={() => handleApproveDoctor(doctor.user_id)}>
+                            Approve
+                          </Button>
+                          <Button variant="destructive" onClick={() => handleRejectDoctor(doctor.user_id)}>
+                            Reject
+                          </Button>
+                        </div>
                       </div>
                     ))
                   )}
